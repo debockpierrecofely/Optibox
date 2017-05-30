@@ -16,6 +16,7 @@ import os.path
 import configparser
 from helper import configHelper
 import pika
+import threading
 
 ################################################################################
 # NOTE: Pin 2 and 3 has been replaced by 20 and 21 because the voltage of GPIO 2
@@ -99,6 +100,14 @@ def createBuffer():
             buffIndex +=1
 
 ################################################################################
+# Creating threads
+################################################################################
+
+def run_threaded(job_func):
+    job_thread = threading.Thread(target=job_func)
+    job_thread.start()
+
+################################################################################
 # Create buffer for invoice called by event
 ################################################################################
 
@@ -164,9 +173,60 @@ def sendDataToElk():
     rbmqconnection = pika.BlockingConnection(pika.ConnectionParameters(host=rbmqaddr, credentials=credentials))
     channel = rbmqconnection.channel()
     channel.queue_declare(queue='FROMOPTIBOX')
-    channel.basic_publish(exchange='FROMOPTIBOX',
-                          routing_key='',
-                          body='TestHello')
+    logger.info(">>>>>> Enter into createbuffer")
+    global gpioValues
+    global messIndex
+    byte0 = '01'
+    byte1 = ''
+    byte2 = ''
+    byte3 = '0b'
+    for i in range(8,14):
+        if GPIO.input(i) == 1:
+            byte3 += '0'
+        else:
+            byte3 += '1'
+
+    byte3+='00'
+    byte3 = '%02X' % (int(byte3, 2))
+    ident1 = ''
+    ident2 = ''
+    index1 = ''
+    index2 = ''
+    buffIndex = 0
+    logger.info("BYTE 3 : "+byte3)
+
+    for gpioNum in range (2,14):
+        if usedentries[gpioNum] == 1 or gpiohours[gpioNum] == 1:
+            logger.info("treating GPIO number "+ str(gpioNum))
+            value = int(gpioValues[gpioNum])
+            if (buffIndex % 2)==0 :
+                ident1 = bin(gpioNum)
+                index1 = bin(value)
+                logger.info("Ident1 : "+ ident1 + "index1 : "+index1)
+            else:
+                ident2 = bin(gpioNum)[2:].zfill(4)
+                index2 = bin(value)
+                logger.info("Ident2 : "+ ident2 + "index2 : "+index2)
+                byte1 = '%02X' % (int((ident1+ident2),2))
+                if messIndex == 256:
+                    messIndex = 0
+                byte2 = '%02X' % messIndex
+                index1 = '%08X' % (int(index1, 2))
+                index2 = '%08X' % (int(index2, 2))
+                logger.info('BYTE 1 :' + byte1)
+                logger.info('BYTE 2 :' + byte2)
+                logger.info('BYTE 3 :' + byte3)
+                logger.info('INDEX 1 :' + index1)
+                logger.info('INDEX 2 :' + index2)
+                message = byte0+byte1+byte2+byte3+index1+index2
+                actualTime = time.time()
+                messageComplete = '"message":"'+message+'", "id":"0000", "time":"'+actualTime+'", "messType":"'+byte0+'", "messSubType":"'+byte1+'", "sequence":"'+byte2+'", "relays":"'+byte3+'", "index1":"'+index1+'", "index2":"'+index2+'"'
+                logger.info("Message ready to be send : "+message)
+                channel.basic_publish(exchange='FROMOPTIBOX',
+                                      routing_key='',
+                                      body=messageComplete)
+                messIndex += 1
+            buffIndex +=1
     rbmqconnection.close()
 
 ################################################################################
@@ -380,10 +440,10 @@ for gpioNum in range(2,14):
 #	GPIO.add_event_detect(translateGpioNum(gpioNum), GPIO.RISING, callback=gpio_callback_relay, bouncetime=300)
 
 
-useElk = configHelper.GetVariable('main', 'sendToElk')
-useSigfox = configHelper.GetVariable('main', 'sendToSigfox')
+useElk = configHelper.GetVariable('main', 'sendtoelk')
+useSigfox = configHelper.GetVariable('main', 'sendtosigfox')
 
-if useSigfox:
+if useSigfox == '1':
     timer = 0
     gpioCount
     if gpioCount >= 11:
@@ -400,10 +460,10 @@ if useSigfox:
     logger.info("SigfoxTimer is : "+ str(timer))
     schedule.every(timer).minutes.do(createBuffer)
 
-if useElk:
+if useElk == '1':
     schedule.every(5).minutes.do(sendDataToElk)
 
-schedule.every(1).minutes.do(rewriteFiles)
+schedule.every(1).minutes.do(run_threaded, rewriteFiles)
 logger.info("schedule configured")
 
 try:
