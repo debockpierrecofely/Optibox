@@ -17,6 +17,7 @@ import configparser
 from helper import configHelper
 import pika
 import threading
+from uuid import getnode as get_mac
 
 ################################################################################
 # NOTE: Pin 2 and 3 has been replaced by 20 and 21 because the voltage of GPIO 2
@@ -176,6 +177,7 @@ def sendDataToElk():
     logger.info(">>>>>> Enter into createbuffer")
     global gpioValues
     global messIndex
+    global idDevice
     byte0 = '01'
     byte1 = ''
     byte2 = ''
@@ -219,8 +221,8 @@ def sendDataToElk():
                 logger.info('INDEX 1 :' + index1)
                 logger.info('INDEX 2 :' + index2)
                 message = byte0+byte1+byte2+byte3+index1+index2
-                actualTime = time.time()
-                messageComplete = '"message":"'+message+'", "id":"0000", "time":"'+actualTime+'", "messType":"'+byte0+'", "messSubType":"'+byte1+'", "sequence":"'+byte2+'", "relays":"'+byte3+'", "index1":"'+index1+'", "index2":"'+index2+'"'
+                actualTime = int(time.time())
+                messageComplete = '"message":"'+message+'", "source":"rmq", "id":"'+idDevice+'", "time":"'+str(actualTime)+'", "messType":"'+byte0+'", "messSubType":"'+byte1+'", "sequence":"'+byte2+'", "relays":"'+byte3+'", "index1":"'+index1+'", "index2":"'+index2+'"'
                 logger.info("Message ready to be send : "+message)
                 channel.basic_publish(exchange='FROMOPTIBOX',
                                       routing_key='',
@@ -390,6 +392,8 @@ logger.info(str(gpioCount)+" GPIOs are set")
 
 GPIO.setmode(GPIO.BCM)
 
+idDevice = str(get_mac())
+logger.info("MAC address device : "+idDevice)
 filesStore = []
 gpioValues = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 gpioHoursStart = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
