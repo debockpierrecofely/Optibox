@@ -222,7 +222,7 @@ def sendDataToElk():
                 logger.info('INDEX 2 :' + index2)
                 message = byte0+byte1+byte2+byte3+index1+index2
                 actualTime = int(time.time())
-                messageComplete = '"message":"'+message+'", "source":"rmq", "id":"'+idDevice+'", "time":"'+str(actualTime)+'", "messType":"'+byte0+'", "messSubType":"'+byte1+'", "sequence":"'+byte2+'", "relays":"'+byte3+'", "index1":"'+index1+'", "index2":"'+index2+'"'
+                messageComplete = '{"message":"'+message+'", "source":"rmq", "id":"'+idDevice+'", "time":"'+str(actualTime)+'", "messType":"'+byte0+'", "messSubType":"'+byte1+'", "sequence":"'+byte2+'", "relays":"'+byte3+'", "index1":"'+index1+'", "index2":"'+index2+'"}'
                 logger.info("Message ready to be send : "+message)
                 channel.basic_publish(exchange='FROMOPTIBOX',
                                       routing_key='',
