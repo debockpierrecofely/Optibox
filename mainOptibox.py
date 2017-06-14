@@ -89,9 +89,9 @@ def createBuffer():
                 byte2 = '%02X' % messIndex
                 index1 = '%08X' % (int(index1, 2))
                 index2 = '%08X' % (int(index2, 2))
-                logger.info('BYTE 1 :' + byte1)
-                logger.info('BYTE 2 :' + byte2)
-                logger.info('BYTE 3 :' + byte3)
+                logger.info('BYTE 1 (SUB TYPE):' + byte1)
+                logger.info('BYTE 2 (SEQ):' + byte2)
+                logger.info('BYTE 3 (STATES):' + byte3)
                 logger.info('INDEX 1 :' + index1)
                 logger.info('INDEX 2 :' + index2)
                 message = byte0+byte1+byte2+byte3+index1+index2
@@ -116,6 +116,8 @@ def createRelayBuffer(gpioNum):
     logger.info(">>>>> Enter into event createbuffer")
     global gpioValues
     global messIndex
+
+    logger.info("Mess Index="+str(messIndex))
     if messIndex == 256:
         messIndex = 0
     byte0 = '01'
@@ -130,7 +132,7 @@ def createRelayBuffer(gpioNum):
     byte3+='00'
     logger.info("Realy states:"+byte3)
     byte3 = '%02X' % (int(byte3, 2))
-    messIndex = 0
+#    messIndex = 0
     ident1 = ''
     ident2 = ''
     index1 = ''
@@ -145,15 +147,16 @@ def createRelayBuffer(gpioNum):
     byte2 = '%02X' % messIndex
     index1 = '%08X' % (int(index1, 2))
     index2 = '%08X' % (int(index2, 2))
-    logger.info('BYTE 1 :' + byte1)
-    logger.info('BYTE 2 :' + byte2)
-    logger.info('BYTE 3 :' + byte3)
+    logger.info('BYTE 1 (SUB TYPE):' + byte1)
+    logger.info('BYTE 2 (SEQ):' + byte2)
+    logger.info('BYTE 3 (RELAYS):' + byte3)
     logger.info('INDEX 1 :' + index1)
     logger.info('INDEX 2 :' + index2)
     message = byte0+byte1+byte2+byte3+index1+index2
     logger.info("Message ready to be send : "+message)
     sendDataToSigfox(message)
     messIndex += 1
+    logger.info("Mess Index="+str(messIndex))
 
 
 ################################################################################
@@ -222,7 +225,7 @@ def sendDataToElk():
                 logger.info('INDEX 2 :' + index2)
                 message = byte0+byte1+byte2+byte3+index1+index2
                 actualTime = int(time.time())
-                messageComplete = '{"message":"'+message+'", "source":"rmq", "id":"'+idDevice+'", "time":"'+str(actualTime)+'", "messType":"'+byte0+'", "messSubType":"'+byte1+'", "sequence":"'+byte2+'", "relays":"'+byte3+'", "index1":"'+index1+'", "index2":"'+index2+'"}'
+                messageComplete = '"message":"'+message+'", "source":"rmq", "id":"'+idDevice+'", "time":"'+str(actualTime)+'", "messType":"'+byte0+'", "messSubType":"'+byte1+'", "sequence":"'+byte2+'", "relays":"'+byte3+'", "index1":"'+index1+'", "index2":"'+index2+'"'
                 logger.info("Message ready to be send : "+message)
                 channel.basic_publish(exchange='FROMOPTIBOX',
                                       routing_key='',
@@ -456,6 +459,8 @@ if useSigfox == '1':
         timer = 90
     elif gpioCount >= 7:
         timer = 60
+    elif gpioCount >= 5:
+        timer = 45
     elif gpioCount >= 3:
         timer = 30
     else:
