@@ -257,7 +257,7 @@ def gpio_callback(channel):
 def gpio_callback_relay(channel):
     global eventmessageavailable
     if eventmessageavailable<=0:
-	logger.info("No more event message.")
+        logger.info("No more event message.")
         return
     eventmessageavailable-=1
     logger.info("Using an event message. Left:"+str(eventmessageavailable))
@@ -312,9 +312,9 @@ def rewriteFiles():
     for gpioNum in range(2,14):
         if gpiohours[gpioNum] == 1:
              if GPIO.input(gpioNum) == 0:
-		logger.info("GPIO is UP"+str(gpioNum))
-		gpioValues[gpioNum] += 1
-		somethingchanged= True
+                logger.info("GPIO is UP"+str(gpioNum))
+                gpioValues[gpioNum] += 1
+                somethingchanged= True
 
 #            if GPIO.input(gpioNum) == 0:
 #                logger.info("GPIO is UP"+str(gpioNum))
@@ -419,30 +419,35 @@ for i in filesStore:
         #gpioValues=0
     x+=1
 
-
-for gpioNum in range(2,14):
-    logger.info("Setting up GPIO "+ str(gpioNum) )
-    GPIO.setup(translateGpioNum(gpioNum), GPIO.IN, pull_up_down=GPIO.PUD_UP)
-    if gpiohours[gpioNum] == 1:
-        logger.info("GPIO " + str(translateGpioNum(gpioNum)) + " is hours datalogger")
-        if GPIO.input(translateGpioNum(gpioNum)):
-            gpioHoursStart[translateGpioNum(gpioNum)] = int(time.time())
-            gpioLastState[translateGpioNum(gpioNum)] = 1
-            logger.info("State 1 and time is "+ str(gpioHoursStart[translateGpioNum(gpioNum)]))
-        else:
-            gpioLastState[translateGpioNum(gpioNum)]= 0
-            logger.info("State is 0")
-
+try:
+    for gpioNum in range(2,14):
+        logger.info("Setting up GPIO "+ str(gpioNum) )
+        GPIO.setup(translateGpioNum(gpioNum), GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        if gpiohours[gpioNum] == 1:
+            logger.info("GPIO " + str(translateGpioNum(gpioNum)) + " is hours datalogger")
+            if GPIO.input(translateGpioNum(gpioNum)):
+                logger.info("A")
+                gpioHoursStart[translateGpioNum(gpioNum)] = int(time.time())
+                logger.info("AA")
+                gpioLastState[translateGpioNum(gpioNum)] = 1
+                logger.info("AB")
+                logger.info("State 1 and time is "+ str(gpioHoursStart[translateGpioNum(gpioNum)]))
+            else:
+                logger.info("B")
+                gpioLastState[translateGpioNum(gpioNum)]= 0
+                logger.info("State is 0")
+except Error as er:
+    logger.error(er)
 
 somethingchanged=False
 
 for gpioNum in range(2,14):
     logger.info('Configuring event on GPIO '+str(gpioNum))
     if usedentries[(gpioNum)] == 1:
-	logger.info("Adding call back to "+str(gpioNum))
+        logger.info("Adding call back to "+str(gpioNum))
         GPIO.add_event_detect(translateGpioNum(gpioNum), GPIO.FALLING, callback=gpio_callback, bouncetime=300)
     if gpiohours[(gpioNum)] == 1:
-	logger.info("Adding call back to relay "+str(gpioNum))
+        logger.info("Adding call back to relay "+str(gpioNum))
         GPIO.add_event_detect(translateGpioNum(gpioNum), GPIO.BOTH, callback=gpio_callback_relay, bouncetime=300)
 #	GPIO.add_event_detect(translateGpioNum(gpioNum), GPIO.RISING, callback=gpio_callback_relay, bouncetime=300)
 
