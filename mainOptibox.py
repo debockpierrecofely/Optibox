@@ -427,14 +427,17 @@ try:
             logger.info("GPIO " + str(translateGpioNum(gpioNum)) + " is hours datalogger")
             if GPIO.input(translateGpioNum(gpioNum)):
                 logger.info("A")
-                gpioHoursStart[translateGpioNum(gpioNum)] = int(time.time())
+                #gpioHoursStart[translateGpioNum(gpioNum)] = int(time.time())
+                gpioHoursStart[gpioNum] = int(time.time())
                 logger.info("AA")
-                gpioLastState[translateGpioNum(gpioNum)] = 1
+                #gpioLastState[translateGpioNum(gpioNum)] = 1
+                gpioLastState[gpioNum] = 1
                 logger.info("AB")
-                logger.info("State 1 and time is "+ str(gpioHoursStart[translateGpioNum(gpioNum)]))
+                logger.info("State 1 and time is "+ str(gpioHoursStart[gpioNum]))
             else:
                 logger.info("B")
-                gpioLastState[translateGpioNum(gpioNum)]= 0
+                #gpioLastState[translateGpioNum(gpioNum)]= 0
+                gpioLastState[gpioNum]= 0
                 logger.info("State is 0")
 except Error as er:
     logger.error(er)
