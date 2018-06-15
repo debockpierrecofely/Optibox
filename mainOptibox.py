@@ -181,6 +181,7 @@ def sendDataToElk():
     global gpioValues
     global messIndex
     global idDevice
+    global optiboxID
     byte0 = '01'
     byte1 = ''
     byte2 = ''
@@ -225,7 +226,7 @@ def sendDataToElk():
                 logger.info('INDEX 2 :' + index2)
                 message = byte0+byte1+byte2+byte3+index1+index2
                 actualTime = int(time.time())
-                messageComplete = '"message":"'+message+'", "source":"rmq", "id":"'+idDevice+'", "time":"'+str(actualTime)+'", "messType":"'+byte0+'", "messSubType":"'+byte1+'", "sequence":"'+byte2+'", "relays":"'+byte3+'", "index1":"'+index1+'", "index2":"'+index2+'"'
+                messageComplete = '{"message":"'+message+'", "source":"rmq", "id":"'+optiboxID+'", "time":"'+str(actualTime)+'", "messType":"'+byte0+'", "messSubType":"'+byte1+'", "sequence":"'+byte2+'", "relays":"'+byte3+'", "index1":"'+index1+'", "index2":"'+index2+'"}'
                 logger.info("Message ready to be send : "+message)
                 channel.basic_publish(exchange='FROMOPTIBOX',
                                       routing_key='',
@@ -357,6 +358,7 @@ def translateGpioNum(num):
 
 rbmqpasswd = configHelper.GetVariable('main', 'rabbitmq_password')
 rbmqaddr = configHelper.GetVariable('main', 'rabbitmq_address')
+optiboxID = configHelper.GetVariable('main', 'optiboxid')
 logger.info('rmqaddr : '+str(rbmqaddr))
 credentials = pika.PlainCredentials("rabbitmq", rbmqpasswd)
 
@@ -420,6 +422,7 @@ for i in filesStore:
     x+=1
 
 try:
+    print('step')
     for gpioNum in range(2,14):
         logger.info("Setting up GPIO "+ str(gpioNum) )
         GPIO.setup(translateGpioNum(gpioNum), GPIO.IN, pull_up_down=GPIO.PUD_UP)
@@ -478,7 +481,7 @@ if useSigfox == '1':
     schedule.every(timer).minutes.do(createBuffer)
 
 if useElk == '1':
-    schedule.every(5).minutes.do(sendDataToElk)
+    schedule.every(1).minutes.do(sendDataToElk)
 
 schedule.every(1).minutes.do(run_threaded, rewriteFiles)
 logger.info("schedule configured")
