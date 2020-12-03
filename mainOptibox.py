@@ -28,6 +28,11 @@ from uuid import getnode as get_mac
 
 ################################################################################
 # v0.1 30May2017 PDE FIRST VERSION
+# v1.0.20190128 - Berthet 
+#     - Simplify logging by removing some extra (useless) messages : set them to print() in place of logger.info()
+#     - Suppress '%(name) - %(levelname)' in logger format and format datetime to supress milisecond part
+#     - Fix : translateGpioNum() was not used in RewrireFiles() 
+version = 'v1.0.20190128'
 ################################################################################
 
 logging.basicConfig(level=logging.INFO)
@@ -37,12 +42,13 @@ handler = TimedRotatingFileHandler("gpio.log",
                                        interval=1,
                                    backupCount=30)
 
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+#formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+formatter = logging.Formatter('%(asctime)s - %(message)s', '%Y-%m-%d %H:%M:%S')
 handler.setFormatter(formatter)
 
 logger=logging.getLogger(__name__)
 logger.addHandler(handler)
-logger.info("Starting Optibox v0.1")
+logger.info("Initializing Version "+version+"...")
 
 
 ################################################################################
@@ -166,7 +172,7 @@ def sendDataToSigfox(message):
     #message = createBuffer()
     #print("Message sended to sigfox : "+message)
     logger.info("Trying sending sigfox data : "+ message)
-    sgfx.sendMessage(message)
+    logger.info(sgfx.sendMessage(message))
 
 ################################################################################
 # Send Data ELK
@@ -312,26 +318,10 @@ def rewriteFiles():
     x = 2
     for gpioNum in range(2,14):
         if gpiohours[gpioNum] == 1:
-             if GPIO.input(gpioNum) == 0:
+             if GPIO.input(translateGpioNum(gpioNum)) == 0:
                 logger.info("GPIO is UP"+str(gpioNum))
                 gpioValues[gpioNum] += 1
                 somethingchanged= True
-
-#            if GPIO.input(gpioNum) == 0:
-#                logger.info("GPIO is UP"+str(gpioNum))
-#                if gpioLastState[gpioNum] == 0:
-#                    logger.info("Start counter")+str(gpioNum)
-#                    gpioHoursStart[gpioNum] == int(time.time())
-#                    gpioLastState[gpioNum] = 1
-#            else:
-#		logger.info("GPIO is Down"+str(gpioNum))
-#                if gpioLastState[gpioNum] == 1:
-#		    logger.info("Stop counter"+str(gpioNum))
-#                    index = int(time.time()) - gpioHoursStart[gpioNum]
-#                    logger.info("Adding:"+str(index))
-#                    gpioValues[gpioNum] += index
-#                    gpioLastState[gpioNum] = 0
-#                    somethingchanged = True
 
     if somethingchanged:
         logger.info("Something has changed")
@@ -360,6 +350,7 @@ rbmqpasswd = configHelper.GetVariable('main', 'rabbitmq_password')
 rbmqaddr = configHelper.GetVariable('main', 'rabbitmq_address')
 optiboxID = configHelper.GetVariable('main', 'optiboxid')
 logger.info('rmqaddr : '+str(rbmqaddr))
+logger.info('optiboxID : '+str(optiboxID))
 credentials = pika.PlainCredentials("rabbitmq", rbmqpasswd)
 
 sgfx = Sigfox('/dev/serial0')
@@ -380,7 +371,7 @@ for pin in range(2,14):
     cfg = configHelper.GetVariable('impulses', 'use_impulse_'+str(pin))
     index = configHelper.GetVariable('coefficients', 'coefficient_'+str(pin))
     hour = configHelper.GetVariable('hours', 'use_hour_'+str(pin))
-    logger.info('impulse : '+cfg + ' hour : ' + hour)
+    print('impulse : '+cfg + ' hour : ' + hour)
     if(cfg=='1'):
 #        print(str(x))
         usedentries[x]=1
@@ -411,49 +402,58 @@ x = 2
 for i in filesStore:
     if os.path.exists(i):
         opFile = open(i, 'r')
-        gpioValues[x]=int(opFile.read())
-        logger.info(i+" exist, value is "+ str(gpioValues[x]))
+        try:
+            gpioValues[x]=int(opFile.read())
+	    print(i+" exist, value is "+ str(gpioValues[x]))
+	    if (gpiohours[x] == 1 or usedentries[x] == 1):
+            	logger.info("Counter start for PIN " + str(x) + " : " +  str(gpioValues[x]))
+        except Exception as er:
+            opFile.close()
+            opFile = open(i, 'w')
+            logger.info(er)
+            opFile.write('0')
         opFile.close()
     else:
         opFile = open(i, 'w')
         opFile.write('0')
         logger.info(i + " was created")
+        opFile.close()
         #gpioValues=0
     x+=1
 
 try:
     print('step')
     for gpioNum in range(2,14):
-        logger.info("Setting up GPIO "+ str(gpioNum) )
+        print("Setting up GPIO "+ str(gpioNum) )
         GPIO.setup(translateGpioNum(gpioNum), GPIO.IN, pull_up_down=GPIO.PUD_UP)
         if gpiohours[gpioNum] == 1:
-            logger.info("GPIO " + str(translateGpioNum(gpioNum)) + " is hours datalogger")
+            print("GPIO " + str(translateGpioNum(gpioNum)) + " is hours datalogger")
             if GPIO.input(translateGpioNum(gpioNum)):
-                logger.info("A")
+                print("A")
                 #gpioHoursStart[translateGpioNum(gpioNum)] = int(time.time())
                 gpioHoursStart[gpioNum] = int(time.time())
-                logger.info("AA")
+                print("AA")
                 #gpioLastState[translateGpioNum(gpioNum)] = 1
                 gpioLastState[gpioNum] = 1
-                logger.info("AB")
-                logger.info("State 1 and time is "+ str(gpioHoursStart[gpioNum]))
+                print("AB")
+                print("State 1 and time is "+ str(gpioHoursStart[gpioNum]))
             else:
-                logger.info("B")
+                print("B")
                 #gpioLastState[translateGpioNum(gpioNum)]= 0
                 gpioLastState[gpioNum]= 0
-                logger.info("State is 0")
+                print("State is 0")
 except Error as er:
     logger.error(er)
 
 somethingchanged=False
 
 for gpioNum in range(2,14):
-    logger.info('Configuring event on GPIO '+str(gpioNum))
+    print('Configuring event on GPIO '+str(gpioNum))
     if usedentries[(gpioNum)] == 1:
-        logger.info("Adding call back to "+str(gpioNum))
+        print("Adding call back to "+str(gpioNum))
         GPIO.add_event_detect(translateGpioNum(gpioNum), GPIO.FALLING, callback=gpio_callback, bouncetime=300)
     if gpiohours[(gpioNum)] == 1:
-        logger.info("Adding call back to relay "+str(gpioNum))
+        print("Adding call back to relay "+str(gpioNum))
         GPIO.add_event_detect(translateGpioNum(gpioNum), GPIO.BOTH, callback=gpio_callback_relay, bouncetime=300)
 #	GPIO.add_event_detect(translateGpioNum(gpioNum), GPIO.RISING, callback=gpio_callback_relay, bouncetime=300)
 
@@ -477,11 +477,15 @@ if useSigfox == '1':
     else:
         timer = 15
 
-    logger.info("SigfoxTimer is : "+ str(timer))
+    logger.info("SigfoxTimer is : "+ str(timer) + " minutes")
     schedule.every(timer).minutes.do(createBuffer)
+    if(os.path.isfile('conf/forcesigfox.txt')):
+	logger.info("Found 'conf/forcesigfox.txt : Force to send indexes to Sigfox")
+	os.remove('conf/forcesigfox.txt')
+	createBuffer();
 
 if useElk == '1':
-    schedule.every(1).minutes.do(sendDataToElk)
+    schedule.every(15).minutes.do(sendDataToElk)
 
 schedule.every(1).minutes.do(run_threaded, rewriteFiles)
 logger.info("schedule configured")
